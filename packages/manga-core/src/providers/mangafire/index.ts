@@ -1,4 +1,4 @@
-import { ProviderError } from "@yomi/shared";
+import { ProviderError } from "../../../../shared/src";
 import type {
   Chapter,
   ChapterData,

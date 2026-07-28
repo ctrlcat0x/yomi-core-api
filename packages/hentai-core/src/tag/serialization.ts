@@ -1,4 +1,4 @@
-import type { SearchableTag } from "@yomi/shared";
+import type { SearchableTag } from "../../../shared/src";
 
 export type TagModifier = "+" | "-" | "~";
 export type BlockingGroup =

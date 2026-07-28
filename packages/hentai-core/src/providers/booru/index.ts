@@ -1,6 +1,6 @@
-import { ProviderError, TTL, cached, config } from "@yomi/shared";
-import type { SearchableTag } from "@yomi/shared";
 import { type Post, forSite, search, sites } from "booru";
+import { ProviderError, TTL, cached, config } from "../../../../shared/src";
+import type { SearchableTag } from "../../../../shared/src";
 import {
   type BlockingGroup,
   parseTagString,

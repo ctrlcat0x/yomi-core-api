@@ -6,7 +6,7 @@ import {
   getKitsuManga,
   searchJikanManga,
   searchKitsuManga,
-} from "@yomi/shared";
+} from "../../shared/src";
 import { mangafireProvider } from "./providers/mangafire/index.js";
 import { omegascansProvider } from "./providers/omegascans/index.js";
 import { weebcentralProvider } from "./providers/weebcentral/index.js";

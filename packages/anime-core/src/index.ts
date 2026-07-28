@@ -14,7 +14,7 @@ import {
   searchJikanAnime,
   searchKitsuAnime,
   searchMalAnime,
-} from "@yomi/shared";
+} from "../../shared/src";
 import { anikotoProvider } from "./providers/anikoto/index.js";
 import { animethemesProvider } from "./providers/animethemes/index.js";
 import { anipubProvider } from "./providers/anipub/index.js";

@@ -1,4 +1,4 @@
-import { config } from "@yomi/shared";
+import { config } from "../../../packages/shared/src";
 import { app } from "./routes/index.js";
 
 const port = config.port;

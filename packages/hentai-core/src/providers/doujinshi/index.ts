@@ -1,4 +1,4 @@
-import { ProviderError, TTL, cached, config } from "@yomi/shared";
+import { ProviderError, TTL, cached, config } from "../../../../shared/src";
 
 const BASE_URL = "https://nhentai.net";
 

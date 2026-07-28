@@ -1,4 +1,4 @@
-import { ProviderError, TTL, cached } from "@yomi/shared";
+import { ProviderError, TTL, cached } from "../../../../shared/src";
 import type {
   Chapter,
   ChapterData,

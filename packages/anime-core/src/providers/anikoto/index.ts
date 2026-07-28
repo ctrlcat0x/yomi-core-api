@@ -1,5 +1,5 @@
-import { ProviderError, config } from "@yomi/shared";
 import * as cheerio from "cheerio";
+import { ProviderError, config } from "../../../../shared/src";
 
 const PRIMARY = config.anikotoBaseUrl ?? "https://anikototv.to";
 const MIRRORS = [

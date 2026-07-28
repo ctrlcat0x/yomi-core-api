@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
-import { ProviderError, config } from "@yomi/shared";
 import * as cheerio from "cheerio";
+import { ProviderError, config } from "../../../../shared/src";
 import { resolvePlayerSource } from "../anikoto/index.js";
 
 const BASE_URL = "https://anipub.xyz";

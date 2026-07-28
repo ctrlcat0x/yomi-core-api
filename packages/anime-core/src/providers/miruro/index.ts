@@ -4,7 +4,7 @@ import {
   config,
   deepTranslate,
   injectSourceSlugs,
-} from "@yomi/shared";
+} from "../../../../shared/src";
 
 export interface PipePayload {
   path: string;

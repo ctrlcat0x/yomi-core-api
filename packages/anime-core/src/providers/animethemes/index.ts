@@ -1,4 +1,4 @@
-import { ProviderError, config } from "@yomi/shared";
+import { ProviderError, config } from "../../../../shared/src";
 
 const BASE_URL = "https://api.animethemes.moe";
 

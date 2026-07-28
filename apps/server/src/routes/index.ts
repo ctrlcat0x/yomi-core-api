@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { type Context, Hono } from "hono";
+import { cors } from "hono/cors";
 import {
   type AnimeMetadataSource,
   type AnimeProviderId,
@@ -19,14 +21,14 @@ import {
   kitsuAnimeInfo,
   malAnimeInfo,
   resolveAnimeEpisode,
-} from "@yomi/anime-core";
+} from "../../../../packages/anime-core/src";
 import {
   doujinshiSearch,
   hentaiSearch,
   imageboardSearch,
   listBooruSites,
   parseTagString,
-} from "@yomi/hentai-core";
+} from "../../../../packages/hentai-core/src";
 import {
   type MangaProviderId,
   jikanMangaInfo,
@@ -37,7 +39,7 @@ import {
   mangaSearch,
   mangaSeries,
   resolveMangaChapter,
-} from "@yomi/manga-core";
+} from "../../../../packages/manga-core/src";
 import {
   ProviderError,
   config,
@@ -49,9 +51,7 @@ import {
   proxyImageRequest,
   securityMiddleware,
   telemetryMiddleware,
-} from "@yomi/shared";
-import { type Context, Hono } from "hono";
-import { cors } from "hono/cors";
+} from "../../../../packages/shared/src";
 
 const ANIME_PROVIDERS = ["anikoto", "anipub", "animethemes", "miruro"] as const;
 const MANGA_PROVIDERS = ["omegascans", "mangafire", "weebcentral"] as const;
