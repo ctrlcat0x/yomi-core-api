@@ -4,9 +4,6 @@
   "workspaces": {
     "": {
       "name": "yomi-core-api",
-      "dependencies": {
-        "hono": "^4.7.4",
-      },
       "devDependencies": {
         "@biomejs/biome": "^1.9.4",
         "@types/bun": "latest",

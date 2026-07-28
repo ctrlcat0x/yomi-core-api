@@ -1,10 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "hono",
+  "framework": null,
   "functions": {
-    "index.ts": {
+    "api/index.ts": {
       "includeFiles": "apps/server/src/playground/index.html",
       "maxDuration": 60
     }
-  }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
 }
