@@ -1,11 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
-  "functions": {
-    "api/index.ts": {
-      "includeFiles": "apps/server/src/playground/index.html",
-      "maxDuration": 60
-    }
-  },
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
+  "version": 2,
+  "builds": [{ "src": "api/index.ts", "use": "@vercel/node" }],
+  "routes": [{ "src": "/(.*)", "dest": "api/index.ts" }]
 }
