@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import {
   type AnimeMetadataSource,
   type AnimeProviderId,
@@ -54,7 +53,6 @@ import {
 import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const ANIME_PROVIDERS = ["anikoto", "anipub", "animethemes", "miruro"] as const;
 const MANGA_PROVIDERS = ["omegascans", "mangafire", "weebcentral"] as const;
 
@@ -226,7 +224,7 @@ app.get("/openapi.json", (c) =>
 
 app.get("/playground", (c) => {
   const html = readFileSync(
-    join(__dirname, "..", "playground", "index.html"),
+    join(process.cwd(), "apps", "server", "src", "playground", "index.html"),
     "utf-8",
   );
   return c.html(html);
