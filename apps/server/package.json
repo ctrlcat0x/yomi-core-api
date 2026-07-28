@@ -1,0 +1,19 @@
+{
+  "name": "@yomi/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@yomi/anime-core": "workspace:*",
+    "@yomi/hentai-core": "workspace:*",
+    "@yomi/manga-core": "workspace:*",
+    "@yomi/shared": "workspace:*",
+    "hono": "^4.7.4",
+    "zod": "^3.24.2"
+  }
+}

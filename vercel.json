@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "hono",
+  "bunVersion": "1.x",
+  "functions": {
+    "index.ts": {
+      "includeFiles": "apps/server/src/playground/index.html",
+      "maxDuration": 60
+    }
+  }
+}

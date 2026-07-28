@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yomi Core API — Playground</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: #141419;
+      --surface2: #1c1c24;
+      --border: #2a2a35;
+      --text: #f0f0f5;
+      --muted: #8b8b9a;
+      --accent: #7c6cff;
+      --accent2: #5eead4;
+      --warn: #fbbf24;
+      --danger: #f87171;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Outfit, system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
+    header h1 { font-size: 1.35rem; font-weight: 700; }
+    header p { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
+
+    .tabs { display: flex; gap: 0.35rem; padding: 1rem 1.5rem 0; flex-wrap: wrap; }
+    .tab {
+      padding: 0.5rem 1rem; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 999px; cursor: pointer; color: var(--muted); font-size: 0.875rem; font-weight: 500;
+    }
+    .tab.active { color: var(--text); border-color: var(--accent); background: rgba(124,108,255,0.12); }
+
+    .layout { display: grid; grid-template-columns: 1fr 340px; gap: 1rem; padding: 1rem 1.5rem 1.5rem; min-height: calc(100vh - 120px); }
+    @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+
+    .main { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+    .sidebar { display: flex; flex-direction: column; gap: 1rem; }
+    @media (max-width: 1100px) { .sidebar { order: -1; max-height: 280px; } }
+
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; gap: 0.5rem; }
+    .panel-head h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+    .badge { font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 999px; background: var(--surface2); color: var(--muted); }
+
+    .toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .toolbar input, .toolbar select {
+      flex: 1; min-width: 140px; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); padding: 0.6rem 0.85rem; border-radius: 10px; font-size: 0.875rem; outline: none;
+    }
+    .toolbar input:focus, .toolbar select:focus { border-color: var(--accent); }
+    .btn {
+      background: var(--accent); border: none; color: #fff; padding: 0.6rem 1.1rem;
+      border-radius: 10px; font-size: 0.875rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .btn:hover { filter: brightness(1.08); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--text); }
+
+    .card-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+      gap: 0.75rem; max-height: 420px; overflow-y: auto; padding: 2px;
+    }
+    .card {
+      background: var(--surface2); border: 2px solid transparent; border-radius: 10px;
+      overflow: hidden; cursor: pointer; transition: transform 0.15s, border-color 0.15s;
+    }
+    .card:hover { transform: translateY(-2px); border-color: rgba(124,108,255,0.4); }
+    .card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .card .thumb {
+      width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; background: var(--bg);
+    }
+    .card .thumb-placeholder {
+      width: 100%; aspect-ratio: 2/3; display: flex; align-items: center; justify-content: center;
+      background: var(--bg); color: var(--muted); font-size: 2rem;
+    }
+    .card .meta { padding: 0.5rem; }
+    .card .title {
+      font-size: 0.78rem; font-weight: 500; line-height: 1.25;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .card .sub { font-size: 0.68rem; color: var(--muted); margin-top: 0.2rem; }
+
+    .selected-banner {
+      display: flex; gap: 1rem; align-items: center; padding: 0.85rem;
+      background: var(--surface2); border-radius: 10px; border: 1px solid var(--border);
+    }
+    .selected-banner img { width: 64px; height: 96px; object-fit: cover; border-radius: 8px; background: var(--bg); }
+    .selected-banner .info { flex: 1; min-width: 0; }
+    .selected-banner .name { font-weight: 600; font-size: 1rem; }
+    .selected-banner .detail { color: var(--muted); font-size: 0.8rem; margin-top: 0.15rem; }
+    .selected-banner input {
+      margin-top: 0.4rem; width: 100%; max-width: 280px; background: var(--bg);
+      border: 1px solid var(--border); color: var(--text); padding: 0.35rem 0.6rem; border-radius: 6px; font-size: 0.8rem;
+    }
+
+    .chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; max-height: 160px; overflow-y: auto; }
+    .chip {
+      background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      padding: 0.4rem 0.7rem; border-radius: 8px; font-size: 0.8rem; cursor: pointer;
+    }
+    .chip:hover { border-color: var(--accent); color: var(--accent); }
+    .chip.selected { background: rgba(124,108,255,0.15); border-color: var(--accent); color: var(--accent); }
+    .chip.filler { border-color: rgba(251,191,36,0.3); }
+    .chip.filler.selected { background: rgba(251,191,36,0.12); border-color: var(--warn); color: var(--warn); }
+
+    .viewer { min-height: 200px; }
+    #player { width: 100%; max-height: 420px; background: #000; border-radius: 10px; display: block; }
+    .reader { max-height: 520px; overflow-y: auto; background: var(--bg); border-radius: 10px; padding: 4px; }
+    .reader img { width: 100%; display: block; margin-bottom: 4px; border-radius: 4px; }
+    .lightbox {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 100;
+      display: flex; align-items: center; justify-content: center; padding: 1rem; cursor: zoom-out;
+    }
+    .lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+    .lightbox.hidden { display: none; }
+
+    .status { font-size: 0.8rem; color: var(--muted); min-height: 1.2em; margin-top: 0.5rem; }
+    .status.error { color: var(--danger); }
+    .status.ok { color: var(--accent2); }
+
+    .row-inline { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    .row-inline label { font-size: 0.8rem; color: var(--muted); }
+    .row-inline select { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.35rem 0.6rem; border-radius: 6px; font-size: 0.8rem; }
+
+    pre {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      padding: 0.75rem; font-size: 0.68rem; overflow: auto; max-height: 360px;
+      white-space: pre-wrap; word-break: break-all; font-family: ui-monospace, monospace;
+    }
+    .hidden { display: none !important; }
+    .empty { text-align: center; color: var(--muted); padding: 2rem 1rem; font-size: 0.875rem; }
+    .section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0.75rem 0 0.5rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Yomi Core API Playground</h1>
+    <p>Search → pick from grid → select episode/chapter → watch or read</p>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab active" data-tab="anime" role="tab">Anime</button>
+    <button type="button" class="tab" data-tab="manga" role="tab">Manga</button>
+    <button type="button" class="tab" data-tab="hentai" role="tab">Hentai</button>
+    <button type="button" class="tab" data-tab="universal" role="tab">Universal</button>
+    <button type="button" class="tab" data-tab="api" role="tab">API Explorer</button>
+  </div>
+
+  <div class="layout">
+    <div class="main">
+      <!-- Search -->
+      <div class="panel">
+        <div class="panel-head"><h2>Search</h2><span class="badge" id="result-count">0 results</span></div>
+        <div class="toolbar tab-toolbar" data-tab="anime">
+          <select id="anime-search-source" aria-label="Search source">
+            <option value="anilist">AniList (metadata)</option>
+            <option value="jikan">Jikan / MAL (metadata)</option>
+            <option value="kitsu">Kitsu (metadata)</option>
+            <option value="mal">MAL (official or Jikan fallback)</option>
+            <option value="anikoto">AniKoto (streaming site)</option>
+            <option value="anipub">AniPub (community streaming API)</option>
+            <option value="animethemes">AnimeThemes (official OP/ED media)</option>
+          </select>
+          <select id="anime-provider" aria-label="Provider"><option value="anikoto">anikoto</option><option value="anipub">anipub</option><option value="animethemes">animethemes (OP/ED)</option><option value="miruro">miruro (unavailable)</option></select>
+          <input id="anime-q" placeholder="Search anime..." value="one piece" aria-label="Search query" />
+          <button class="btn" type="button" data-action="search-anime">Search</button>
+        </div>
+        <div class="toolbar tab-toolbar hidden" data-tab="manga">
+          <select id="manga-provider" aria-label="Provider"><option value="mangafire">mangafire</option><option value="weebcentral">weebcentral</option><option value="omegascans">omegascans</option></select>
+          <input id="manga-q" placeholder="Search manga..." value="solo leveling" aria-label="Search query" />
+          <button class="btn" type="button" data-action="search-manga">Search</button>
+        </div>
+        <div class="toolbar tab-toolbar hidden" data-tab="hentai">
+          <select id="hentai-site" aria-label="Site"><option value="danbooru">danbooru</option></select>
+          <input id="hentai-q" placeholder="Tags: 1girl -furry rating:safe" value="1girl rating:safe" aria-label="Tags" />
+          <button class="btn" type="button" data-action="search-hentai">Search</button>
+        </div>
+        <div class="toolbar tab-toolbar hidden" data-tab="universal">
+          <input id="uni-q" placeholder="Search everything..." value="naruto" aria-label="Search query" />
+          <button class="btn" type="button" data-action="search-universal">Search</button>
+        </div>
+        <div class="toolbar tab-toolbar hidden" data-tab="api">
+          <select id="api-preset" aria-label="Endpoint preset">
+            <option value="">Custom path…</option>
+            <option value="/health">GET /health</option>
+            <option value="/v1/anime/providers">GET /v1/anime/providers</option>
+            <option value="/v1/manga/providers">GET /v1/manga/providers</option>
+            <option value="/v1/hentai/sites">GET /v1/hentai/sites</option>
+            <option value="/v1/search/universal?q=naruto">GET /v1/search/universal</option>
+            <option value="/v1/search/anime?q=naruto">GET /v1/search/anime</option>
+            <option value="/v1/search/manga?q=one%20piece">GET /v1/search/manga</option>
+            <option value="/v1/search/doujinshi?q=naruto">GET /v1/search/doujinshi</option>
+            <option value="/v1/search/imageboards?q=1girl&rating=safe&limit=3">GET /v1/search/imageboards</option>
+            <option value="/v1/search/themes?q=naruto&limit=3">GET /v1/search/themes</option>
+            <option value="/v1/anime/watch?title=naruto&episode=1&category=sub">GET /v1/anime/watch</option>
+            <option value="/v1/manga/read?title=one%20piece&chapter=1">GET /v1/manga/read</option>
+            <option value="/v1/anime/search?q=naruto">GET /v1/anime/search</option>
+            <option value="/v1/anime/search?q=naruto&source=jikan">GET /v1/anime/search?source=jikan</option>
+            <option value="/v1/anime/search?q=naruto&source=kitsu">GET /v1/anime/search?source=kitsu</option>
+            <option value="/v1/anime/search?q=naruto&source=mal">GET /v1/anime/search?source=mal</option>
+            <option value="/v1/anime/anikoto/search?q=naruto">GET /v1/anime/anikoto/search</option>
+            <option value="/v1/anime/anipub/search?q=naruto">GET /v1/anime/anipub/search</option>
+            <option value="/v1/anime/animethemes/search?q=naruto">GET /v1/anime/animethemes/search</option>
+            <option value="/v1/anime/animethemes/themes/naruto">GET /v1/anime/animethemes/themes/:slug</option>
+            <option value="/v1/anime/anikoto/trending">GET /v1/anime/anikoto/trending</option>
+            <option value="/v1/anime/anikoto/popular?page=1">GET /v1/anime/anikoto/popular</option>
+            <option value="/v1/anime/anikoto/schedule?date=2026-07-17">GET /v1/anime/anikoto/schedule</option>
+            <option value="/v1/anime/jikan/top?limit=5">GET /v1/anime/jikan/top</option>
+            <option value="/v1/anime/jikan/season?limit=5">GET /v1/anime/jikan/season</option>
+            <option value="/v1/anime/jikan/20">GET /v1/anime/jikan/:malId</option>
+            <option value="/v1/anime/kitsu/1555">GET /v1/anime/kitsu/:id</option>
+            <option value="/v1/anime/mal/20">GET /v1/anime/mal/:malId</option>
+            <option value="/v1/anime/metadata/20/relations">GET /v1/anime/metadata/:id/relations</option>
+            <option value="/v1/manga/search?q=solo%20leveling&provider=weebcentral">GET /v1/manga/search</option>
+            <option value="/v1/manga/search?q=one%20piece&provider=mangafire">GET /v1/manga/search?provider=mangafire</option>
+            <option value="/v1/manga/jikan/search?q=naruto">GET /v1/manga/jikan/search</option>
+            <option value="/v1/manga/kitsu/search?q=naruto">GET /v1/manga/kitsu/search</option>
+            <option value="/v1/hentai/search?q=1girl%20rating:safe&limit=5">GET /v1/hentai/search</option>
+            <option value="/v1/proxy/image?url=https://cdn.donmai.us/sample/sample.jpg">GET /v1/proxy/image</option>
+          </select>
+          <input id="api-path" placeholder="/v1/..." value="/health" aria-label="API path" style="flex:2;" />
+          <button class="btn" type="button" data-action="run-api">Send</button>
+        </div>
+        <div class="status" id="search-status"></div>
+        <div class="card-grid" id="browse-grid"></div>
+        <div class="empty" id="browse-empty">Search to browse titles</div>
+      </div>
+
+      <!-- Selected + episodes/chapters -->
+      <div class="panel hidden" id="detail-panel">
+        <div class="panel-head"><h2 id="detail-title">Selected</h2></div>
+        <div class="selected-banner" id="selected-banner"></div>
+
+        <div id="anime-controls" class="hidden">
+          <div class="row-inline">
+            <label>Provider</label><select id="stream-provider"></select>
+            <label>Audio</label><select id="stream-category"><option value="sub">Sub</option><option value="dub">Dub</option></select>
+            <button class="btn btn-ghost" type="button" id="anime-relations-btn" style="padding:0.35rem 0.7rem;font-size:0.75rem;">Relations</button>
+          </div>
+          <div class="section-label">Episodes</div>
+          <div class="chip-row" id="episode-chips"></div>
+        </div>
+
+        <div id="manga-controls" class="hidden">
+          <div class="section-label">Chapters</div>
+          <div class="chip-row" id="chapter-chips"></div>
+        </div>
+      </div>
+
+      <!-- Viewer -->
+      <div class="panel hidden" id="viewer-panel">
+        <div class="panel-head"><h2 id="viewer-title">Player</h2></div>
+        <div class="viewer">
+          <video id="player" controls playsinline class="hidden"></video>
+          <div class="reader hidden" id="manga-reader"></div>
+        </div>
+        <div class="status" id="viewer-status"></div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="panel" style="flex:1;display:flex;flex-direction:column;">
+        <div class="panel-head">
+          <h2>Response</h2>
+          <button class="btn btn-ghost" type="button" id="clear-json" style="padding:0.25rem 0.6rem;font-size:0.75rem;">Clear</button>
+        </div>
+        <pre id="output">Ready.</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="lightbox hidden" id="lightbox" role="dialog" aria-label="Image preview">
+    <img id="lightbox-img" alt="" />
+  </div>
+
+  <script>
+    const API = window.location.origin;
+    const el = (id) => document.getElementById(id);
+
+    const state = { tab: 'anime', selected: null, episodeData: null, hls: null, pageHeaders: null, lastMs: 0 };
+
+    function setStatus(node, msg, type) {
+      if (!node) return;
+      const timing = state.lastMs ? ` (${state.lastMs}ms)` : '';
+      node.textContent = (msg || '') + timing;
+      node.className = 'status' + (type ? ' ' + type : '');
+    }
+
+    async function api(path) {
+      setStatus(el('search-status'), 'Loading...');
+      const t0 = performance.now();
+      const res = await fetch(API + path);
+      const json = await res.json();
+      state.lastMs = Math.round(performance.now() - t0);
+      setJson({ status: res.status, path, ms: state.lastMs, ...json });
+      if (!json.success) throw new Error(json.error || 'Request failed');
+      setStatus(el('search-status'), '');
+      return json;
+    }
+
+    function setJson(json) {
+      el('output').textContent = JSON.stringify(json, null, 2);
+    }
+
+    function seriesPath(provider, id) {
+      const encoded = id.split('/').map(encodeURIComponent).join('/');
+      return '/v1/manga/' + provider + '/series/' + encoded;
+    }
+
+    function pagesPath(provider, seriesSlug, chapterSlug) {
+      if (provider === 'omegascans' || provider === 'mangafire') {
+        const parts = [seriesSlug, chapterSlug].filter(Boolean).map(encodeURIComponent).join('/');
+        return '/v1/manga/' + provider + '/pages/' + parts;
+      }
+      if (provider === 'weebcentral') {
+        return '/v1/manga/weebcentral/pages/' + encodeURIComponent(chapterSlug || seriesSlug);
+      }
+      return '/v1/manga/' + provider + '/pages/' + encodeURIComponent(chapterSlug || seriesSlug);
+    }
+
+    function proxyImg(url, opts = {}) {
+      if (!url) return '';
+      if (opts === true) opts = { direct: true };
+      if (opts.direct || url.startsWith('/') || url.startsWith('data:')) return url;
+      let u = API + '/v1/proxy/image?url=' + encodeURIComponent(url);
+      const headers = opts.imageHeaders || opts.headers;
+      const referer = headers?.Referer || (typeof headers === 'string' ? headers : null);
+      if (referer) u += '&referer=' + encodeURIComponent(referer);
+      return u;
+    }
+
+    function imageHeadersOf(item) {
+      return item?.imageHeaders || item?.headerForImage || null;
+    }
+
+    function titleOf(item) {
+      if (!item) return 'Unknown';
+      if (typeof item.title === 'object') return item.title.english || item.title.romaji || item.title.native || 'Untitled';
+      return item.title || item.name || item.chapter_name || String(item.id);
+    }
+
+    function imageOf(item) {
+      return item.coverImage?.large || item.coverImage?.extraLarge || item.image || item.thumbnail || item.cover || '';
+    }
+
+    function slugify(str) {
+      return String(str).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    }
+
+    function renderCard(item, opts = {}) {
+      const card = document.createElement('article');
+      card.className = 'card' + (opts.selected ? ' selected' : '');
+      card.setAttribute('role', 'button');
+      card.tabIndex = 0;
+
+      const imgUrl = proxyImg(imageOf(item), {
+        direct: opts.directImg,
+        imageHeaders: opts.imageHeaders || imageHeadersOf(item),
+      });
+      if (imgUrl) {
+        const img = document.createElement('img');
+        img.className = 'thumb';
+        img.src = imgUrl;
+        img.alt = titleOf(item);
+        img.loading = 'lazy';
+        img.onerror = () => { img.replaceWith(Object.assign(document.createElement('div'), { className: 'thumb-placeholder', textContent: '📺' })); };
+        card.appendChild(img);
+      } else {
+        card.innerHTML = '<div class="thumb-placeholder">' + (opts.icon || '📖') + '</div>';
+      }
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.innerHTML = '<div class="title">' + escapeHtml(titleOf(item)) + '</div><div class="sub">' + escapeHtml(opts.sub || '') + '</div>';
+      card.appendChild(meta);
+
+      card.addEventListener('click', () => opts.onSelect(item, card));
+      card.addEventListener('keydown', (e) => { if (e.key === 'Enter') opts.onSelect(item, card); });
+      return card;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function renderGrid(items, onSelect, opts = {}) {
+      const grid = el('browse-grid');
+      grid.innerHTML = '';
+      el('browse-empty').classList.toggle('hidden', items.length > 0);
+      el('result-count').textContent = items.length + ' results';
+      items.forEach((item) => {
+        const sub = opts.subFn ? opts.subFn(item) : (item.provider || item.id || '');
+        grid.appendChild(renderCard(item, {
+          onSelect,
+          sub,
+          icon: opts.icon,
+          directImg: opts.directImg,
+          selected: state.selected && opts.isSame?.(item, state.selected),
+        }));
+      });
+    }
+
+    function selectCard(card) {
+      document.querySelectorAll('.card.selected').forEach((c) => c.classList.remove('selected'));
+      if (card) card.classList.add('selected');
+    }
+
+    function showSelected(item, type) {
+      state.selected = { ...item, _type: type };
+      el('detail-panel').classList.remove('hidden');
+      el('anime-controls').classList.toggle('hidden', type !== 'anime');
+      el('manga-controls').classList.toggle('hidden', type !== 'manga');
+
+      const img = proxyImg(imageOf(item), { imageHeaders: imageHeadersOf(item) });
+      const idLabel = type === 'anime'
+        ? (item.provider || el('anime-search-source')?.value || 'anilist') + ' · ' + (item.id || '')
+        : (item.slug || item.id || '');
+      el('selected-banner').innerHTML =
+        (img ? '<img src="' + img + '" alt="" />' : '') +
+        '<div class="info"><div class="name">' + escapeHtml(titleOf(item)) + '</div>' +
+        '<div class="detail">' + escapeHtml(idLabel) + '</div>' +
+        (type === 'anime' && el('anime-provider')?.value === 'anikoto'
+          ? '<input id="anikoto-slug" placeholder="AniKoto slug (e.g. one-piece)" value="' + escapeHtml(item._slug || slugify(titleOf(item))) + '" aria-label="AniKoto slug" />'
+          : '') +
+        '</div>';
+
+      el('detail-title').textContent = type === 'anime' ? 'Anime' : type === 'manga' ? 'Manga' : 'Selected';
+    }
+
+    function destroyPlayer() {
+      if (state.hls) { state.hls.destroy(); state.hls = null; }
+      const v = el('player');
+      v.pause();
+      v.removeAttribute('src');
+      v.load();
+    }
+
+    function hideViewer() {
+      el('viewer-panel').classList.add('hidden');
+      destroyPlayer();
+      el('manga-reader').innerHTML = '';
+      el('manga-reader').classList.add('hidden');
+      el('player').classList.add('hidden');
+    }
+
+    // ─── Anime ───
+    async function searchAnime() {
+      const q = el('anime-q').value.trim();
+      if (!q) return;
+      const source = el('anime-search-source')?.value || 'anilist';
+      if (source === 'anikoto') {
+        const json = await api('/v1/anime/anikoto/search?q=' + encodeURIComponent(q));
+        renderGrid(json.data || [], (item, card) => {
+          selectCard(card);
+          showSelected({ title: item.title, image: item.image, _slug: item.slug, id: item.slug }, 'anime');
+          el('anime-provider').value = 'anikoto';
+          if (el('anikoto-slug')) el('anikoto-slug').value = item.slug;
+          selectAnime({ title: item.title, image: item.image, _slug: item.slug, id: item.slug }, card);
+        }, {
+          subFn: (i) => 'slug: ' + (i.slug || ''),
+          icon: '📺',
+          isSame: (a, b) => a.slug === b.slug,
+        });
+        return;
+      }
+      if (source === 'anipub' || source === 'animethemes') {
+        const json = await api('/v1/anime/search?q=' + encodeURIComponent(q) + '&source=' + source);
+        el('anime-provider').value = source;
+        renderGrid(json.data || [], (item, card) => selectAnime(item, card), {
+          subFn: (i) => source + ' · ' + (i.year || i.slug || i.id || ''),
+          icon: source === 'animethemes' ? '🎵' : '📺',
+          isSame: (a, b) => String(a.id) === String(b.id),
+        });
+        return;
+      }
+      if (source === 'jikan' || source === 'mal') {
+        const json = await api('/v1/anime/search?q=' + encodeURIComponent(q) + '&source=' + source);
+        const items = (json.data || []).map((item) => {
+          const id = item.mal_id || item.id || item.node?.id;
+          const title = item.title || item.title_english || item.node?.title || 'Untitled';
+          const image = item.images?.jpg?.large_image_url || item.images?.jpg?.image_url
+            || item.main_picture?.large || item.main_picture?.medium || item.node?.main_picture?.large || '';
+          return {
+            id,
+            title,
+            coverImage: { large: image },
+            episodes: item.episodes || item.num_episodes || item.node?.num_episodes,
+            mal_id: id,
+          };
+        });
+        renderGrid(items, (item, card) => selectAnime(item, card), {
+          subFn: (i) => 'MAL #' + (i.mal_id || i.id || '') + (i.episodes ? ' · ' + i.episodes + ' ep' : ''),
+          icon: '📺',
+          isSame: (a, b) => String(a.id) === String(b.id),
+        });
+        return;
+      }
+      if (source === 'kitsu') {
+        const json = await api('/v1/anime/search?q=' + encodeURIComponent(q) + '&source=kitsu');
+        const items = (json.data || []).map((item) => {
+          const titles = item.titles || {};
+          const title = titles.en || titles.en_jp || item.canonicalTitle || 'Untitled';
+          const image = item.posterImage?.large || item.posterImage?.medium || '';
+          return {
+            id: item.id,
+            title,
+            coverImage: { large: image },
+            episodes: item.episodeCount,
+          };
+        });
+        renderGrid(items, (item, card) => selectAnime(item, card), {
+          subFn: (i) => 'Kitsu #' + i.id + (i.episodes ? ' · ' + i.episodes + ' ep' : ''),
+          icon: '📺',
+          isSame: (a, b) => String(a.id) === String(b.id),
+        });
+        return;
+      }
+      const json = await api('/v1/anime/search?q=' + encodeURIComponent(q));
+      renderGrid(json.data || [], (item, card) => selectAnime(item, card), {
+        subFn: (i) => 'AniList #' + i.id + (i.episodes ? ' · ' + i.episodes + ' ep' : ''),
+        icon: '📺',
+        isSame: (a, b) => a.id === b.id,
+      });
+    }
+
+    async function selectAnime(item, card) {
+      selectCard(card);
+      showSelected(item, 'anime');
+      hideViewer();
+      el('episode-chips').innerHTML = '';
+      state.episodeData = null;
+
+      const provider = el('anime-provider').value;
+      let id = String(item.id);
+
+      if (provider === 'anikoto') {
+        const slugInput = el('anikoto-slug');
+        id = slugInput?.value || slugify(titleOf(item));
+        item._slug = id;
+      }
+
+      setStatus(el('search-status'), 'Loading episodes…');
+      try {
+        if (provider === 'animethemes') {
+          const json = await api('/v1/anime/animethemes/themes/' + encodeURIComponent(id));
+          state.episodeData = json.data;
+          renderThemeChips(json.data?.themes || []);
+          setStatus(el('search-status'), (json.data?.themes?.length || 0) + ' themes', 'ok');
+          return;
+        }
+        const json = await api('/v1/anime/' + provider + '/episodes/' + encodeURIComponent(id));
+        state.episodeData = json.data;
+
+        if (provider === 'miruro') {
+          const providers = Object.keys(json.data?.providers || {});
+          const sel = el('stream-provider');
+          sel.innerHTML = '';
+          providers.forEach((p) => { const o = document.createElement('option'); o.value = p; o.textContent = p; sel.appendChild(o); });
+          sel.onchange = renderMiruroEpisodes;
+          el('stream-category').onchange = renderMiruroEpisodes;
+          renderMiruroEpisodes();
+        } else if (provider === 'anipub') {
+          renderEpisodeChips(json.data?.episodes || [], (ep) => playProviderEpisode(ep, 'anipub'));
+        } else {
+          renderAnikotoEpisodes(json.data?.episodes || []);
+        }
+        setStatus(el('search-status'), 'Loaded episodes', 'ok');
+      } catch (e) {
+        setStatus(el('search-status'), e.message, 'error');
+      }
+    }
+
+    function renderMiruroEpisodes() {
+      const provider = el('stream-provider').value;
+      const category = el('stream-category').value;
+      const eps = state.episodeData?.providers?.[provider]?.episodes?.[category] || [];
+      renderEpisodeChips(eps, (ep) => playMiruroEpisode(ep));
+    }
+
+    function renderAnikotoEpisodes(eps) {
+      renderEpisodeChips(eps.map((ep) => ({
+        ...ep,
+        number: ep.number ?? ep.episode_no,
+        id: ep.server_ids || ep.id,
+      })), (ep) => playAnikotoEpisode(ep));
+    }
+
+    function renderThemeChips(themes) {
+      const row = el('episode-chips');
+      row.innerHTML = '';
+      themes.forEach((theme) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'chip';
+        chip.textContent = theme.type + (theme.sequence || 1) + (theme.version > 1 ? ' v' + theme.version : '');
+        chip.title = theme.episodes ? 'Episodes ' + theme.episodes : '';
+        chip.onclick = () => {
+          row.querySelectorAll('.chip').forEach((c) => c.classList.remove('selected'));
+          chip.classList.add('selected');
+          playTheme(theme);
+        };
+        row.appendChild(chip);
+      });
+      if (!themes.length) row.innerHTML = '<span class="status">No themes found</span>';
+    }
+
+    function playTheme(theme) {
+      const url = theme.video?.url;
+      if (!url) return;
+      el('viewer-panel').classList.remove('hidden');
+      el('viewer-title').textContent = theme.type + (theme.sequence || 1);
+      el('player').classList.remove('hidden');
+      el('manga-reader').classList.add('hidden');
+      destroyPlayer();
+      el('player').src = url;
+      el('player').play().catch(() => {});
+      setStatus(el('viewer-status'), 'AnimeThemes · Playing', 'ok');
+    }
+
+    function renderEpisodeChips(eps, onPlay) {
+      const row = el('episode-chips');
+      row.innerHTML = '';
+      if (!eps.length) {
+        row.innerHTML = '<span class="status">No episodes found</span>';
+        return;
+      }
+      eps.forEach((ep) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'chip' + (ep.filler ? ' filler' : '');
+        chip.textContent = 'Ep ' + (ep.number ?? '?') + (ep.filler ? ' · filler' : '');
+        chip.title = ep.title || '';
+        chip.onclick = () => {
+          row.querySelectorAll('.chip').forEach((c) => c.classList.remove('selected'));
+          chip.classList.add('selected');
+          onPlay(ep);
+        };
+        row.appendChild(chip);
+      });
+    }
+
+    function episodeWatchPath(epId) {
+      if (!epId?.startsWith('watch/')) return null;
+      const p = epId.split('/');
+      return '/v1/anime/' + p[1] + '/watch/' + p[2] + '/' + p[3] + '/' + p.slice(4).join('/');
+    }
+
+    async function playMiruroEpisode(ep) {
+      el('viewer-panel').classList.remove('hidden');
+      el('viewer-title').textContent = 'Anime Player';
+      el('player').classList.remove('hidden');
+      el('manga-reader').classList.add('hidden');
+      setStatus(el('viewer-status'), 'Fetching stream…');
+      destroyPlayer();
+
+      try {
+        const path = ep.id?.startsWith('watch/') ? episodeWatchPath(ep.id) : null;
+        if (!path) throw new Error('Invalid episode id — reload episodes');
+        const json = await api(path);
+        await startHls(json.data);
+      } catch (e) {
+        setStatus(el('viewer-status'), e.message, 'error');
+      }
+    }
+
+    async function playAnikotoEpisode(ep) {
+      return playProviderEpisode(ep, 'anikoto');
+    }
+
+    async function playProviderEpisode(ep, provider) {
+      el('viewer-panel').classList.remove('hidden');
+      el('viewer-title').textContent = 'Anime Player';
+      el('player').classList.remove('hidden');
+      el('manga-reader').classList.add('hidden');
+      setStatus(el('viewer-status'), 'Fetching stream…');
+      destroyPlayer();
+
+      try {
+        const ids = ep.server_ids || ep.id;
+        const query = provider === 'anipub' ? 'episodeId=' : 'serverIds=';
+        const json = await api('/v1/anime/' + provider + '/sources?' + query + encodeURIComponent(ids));
+        const streams = json.data?.streams || [];
+        const url = streams.find((s) => s.url)?.url || streams[0]?.url;
+        if (!url) throw new Error('No stream URL — embed may require external player');
+        if (url.includes('.m3u8') || url.includes('mpegurl')) {
+          await startHls({ streams: [{ url }] });
+        } else {
+          el('player').src = url;
+          el('player').play().catch(() => {});
+          setStatus(el('viewer-status'), 'Playing embed URL (may block cross-origin)', 'ok');
+        }
+      } catch (e) {
+        setStatus(el('viewer-status'), e.message, 'error');
+      }
+    }
+
+    async function startHls(sources) {
+      const stream = sources?.streams?.[0];
+      if (!stream?.url) throw new Error('No HLS stream in response');
+
+      const proxied = API + '/v1/proxy/hls?url=' + encodeURIComponent(stream.url);
+      const video = el('player');
+
+      if (window.Hls && Hls.isSupported()) {
+        state.hls = new Hls();
+        state.hls.loadSource(proxied);
+        state.hls.attachMedia(video);
+        state.hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          setStatus(el('viewer-status'), (stream.quality || 'auto') + ' · Playing', 'ok');
+          video.play().catch(() => {});
+        });
+        state.hls.on(Hls.Events.ERROR, (_, data) => {
+          if (data.fatal) setStatus(el('viewer-status'), 'HLS error: ' + data.type, 'error');
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = proxied;
+        video.onloadedmetadata = () => { setStatus(el('viewer-status'), 'Playing', 'ok'); video.play().catch(() => {}); };
+      } else {
+        throw new Error('HLS not supported');
+      }
+
+      if (sources.intro) {
+        setStatus(el('viewer-status'), 'Intro skip: ' + sources.intro.start + 's–' + sources.intro.end + 's', 'ok');
+      }
+    }
+
+    // ─── Manga ───
+    async function searchManga() {
+      const q = el('manga-q').value.trim();
+      const provider = el('manga-provider').value;
+      if (!q) return;
+      const path = '/v1/manga/search?q=' + encodeURIComponent(q) + '&provider=' + provider;
+      const json = await api(path);
+      renderGrid(json.data || [], (item, card) => selectManga(item, card), {
+        subFn: (i) => i.provider || provider,
+        icon: '📖',
+        isSame: (a, b) => (a.slug || a.id) === (b.slug || b.id),
+      });
+    }
+
+    async function selectManga(item, card) {
+      selectCard(card);
+      showSelected(item, 'manga');
+      hideViewer();
+      el('chapter-chips').innerHTML = '';
+
+      const provider = el('manga-provider').value;
+      const id = item.slug || item.id;
+      setStatus(el('search-status'), 'Loading chapters…');
+
+      try {
+        const seriesPathUrl = seriesPath(provider, id) + '?include=chapters';
+        const json = await api(seriesPathUrl);
+        const series = json.data;
+        if (item.image && !series.thumbnail) {
+          series.thumbnail = item.image;
+          series.cover = item.image;
+        }
+        if (item.imageHeaders) series.imageHeaders = item.imageHeaders;
+        state.selected = { ...series, _type: 'manga', _provider: provider };
+        showSelected(series, 'manga');
+        renderChapterChips(series.chapters || [], series);
+        setStatus(el('search-status'), (series.chapters?.length || 0) + ' chapters', 'ok');
+      } catch (e) {
+        setStatus(el('search-status'), e.message, 'error');
+      }
+    }
+
+    function renderChapterChips(chapters, series) {
+      const row = el('chapter-chips');
+      row.innerHTML = '';
+      if (!chapters.length) {
+        row.innerHTML = '<span class="status">No chapters — try Pages on single-chapter providers</span>';
+        return;
+      }
+      chapters.forEach((ch) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'chip';
+        chip.textContent = ch.name || ch.title || ('Ch.' + ch.index);
+        chip.onclick = () => {
+          row.querySelectorAll('.chip').forEach((c) => c.classList.remove('selected'));
+          chip.classList.add('selected');
+          readMangaChapter(series.slug || series.id, ch.slug, series);
+        };
+        row.appendChild(chip);
+      });
+    }
+
+    async function readMangaChapter(seriesSlug, chapterSlug, series) {
+      el('viewer-panel').classList.remove('hidden');
+      el('viewer-title').textContent = 'Manga Reader';
+      el('player').classList.add('hidden');
+      el('manga-reader').classList.remove('hidden');
+      setStatus(el('viewer-status'), 'Loading pages…');
+
+      const provider = el('manga-provider').value;
+      const path = pagesPath(provider, seriesSlug, chapterSlug);
+
+      try {
+        const json = await api(path);
+        state.pageHeaders = json.data?.headerForImage || null;
+        const reader = el('manga-reader');
+        reader.innerHTML = '';
+        (json.data?.images || []).forEach((src, i) => {
+          const img = document.createElement('img');
+          img.src = proxyImg(src, { imageHeaders: state.pageHeaders });
+          img.alt = 'Page ' + (i + 1);
+          img.loading = 'lazy';
+          reader.appendChild(img);
+        });
+        setStatus(el('viewer-status'), json.data?.pageCount + ' pages loaded', 'ok');
+        reader.scrollTop = 0;
+      } catch (e) {
+        setStatus(el('viewer-status'), e.message, 'error');
+      }
+    }
+
+    // ─── Hentai ───
+    async function searchHentai() {
+      const site = el('hentai-site').value;
+      const q = el('hentai-q').value.trim();
+      if (!q) return;
+      const json = await api('/v1/hentai/' + site + '/posts?tags=' + encodeURIComponent(q) + '&limit=24');
+      const posts = json.data?.posts || [];
+      renderGrid(
+        posts.map((p) => ({
+          id: p.id,
+          title: 'Post #' + p.id,
+          image: p.previewUrl || p.sampleUrl || p.fileUrl,
+          _post: p,
+        })),
+        (item, card) => {
+          selectCard(card);
+          openLightbox(item._post.fileUrl || item._post.previewUrl);
+        },
+        { subFn: () => site, icon: '🖼', directImg: true },
+      );
+    }
+
+    function openLightbox(src) {
+      el('lightbox-img').src = proxyImg(src);
+      el('lightbox').classList.remove('hidden');
+    }
+
+    async function searchUniversal() {
+      const q = el('uni-q').value.trim();
+      if (!q) return;
+      const json = await api('/v1/search?q=' + encodeURIComponent(q));
+      const anime = (json.data?.anime || []).map((a) => ({ ...a, _kind: 'anime' }));
+      const manga = (json.data?.manga || []).map((m) => ({ ...m, _kind: 'manga' }));
+      const combined = [...anime, ...manga];
+      renderGrid(combined, (item, card) => {
+        if (item._kind === 'anime') {
+          document.querySelector('[data-tab="anime"]').click();
+          el('anime-q').value = titleOf(item);
+          selectAnime(item, card);
+        } else {
+          document.querySelector('[data-tab="manga"]').click();
+          if ([...el('manga-provider').options].some((option) => option.value === item.provider)) {
+            el('manga-provider').value = item.provider;
+          }
+          el('manga-q').value = titleOf(item);
+          selectManga(item, card);
+        }
+      }, {
+        subFn: (i) => i._kind + (i.provider ? ' · ' + i.provider : i.id ? ' · #' + i.id : ''),
+        icon: '🔍',
+      });
+    }
+
+    function switchTab(tab) {
+      state.tab = tab;
+      state.selected = null;
+      hideViewer();
+      el('detail-panel').classList.add('hidden');
+      el('browse-grid').innerHTML = '';
+      el('browse-empty').classList.remove('hidden');
+      el('result-count').textContent = '0 results';
+      setStatus(el('search-status'), '');
+
+      document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
+      document.querySelectorAll('.tab-toolbar').forEach((tb) => {
+        tb.classList.toggle('hidden', tb.dataset.tab !== tab);
+      });
+    }
+
+    async function loadBooruSites() {
+      try {
+        const res = await fetch(API + '/v1/hentai/sites');
+        const json = await res.json();
+        const sel = el('hentai-site');
+        if (!json.success || !Array.isArray(json.data)) return;
+        sel.innerHTML = '';
+        json.data.forEach((site) => {
+          const o = document.createElement('option');
+          o.value = site.id;
+          o.textContent = site.id + (site.requiresAuth ? ' (auth)' : '') + (site.nsfw ? '' : ' · sfw');
+          sel.appendChild(o);
+        });
+      } catch (_) { /* keep default */ }
+    }
+
+    async function runApiExplorer() {
+      const path = el('api-path').value.trim();
+      if (!path) return;
+      try {
+        await api(path.startsWith('/') ? path : '/' + path);
+        setStatus(el('search-status'), 'OK', 'ok');
+      } catch (e) {
+        setStatus(el('search-status'), e.message, 'error');
+      }
+    }
+
+    function bindEvents() {
+      document.querySelectorAll('.tab').forEach((t) => {
+        t.addEventListener('click', () => switchTab(t.dataset.tab));
+      });
+
+      document.querySelector('[data-action="search-anime"]').addEventListener('click', searchAnime);
+      document.querySelector('[data-action="search-manga"]').addEventListener('click', searchManga);
+      document.querySelector('[data-action="search-hentai"]').addEventListener('click', searchHentai);
+      document.querySelector('[data-action="search-universal"]').addEventListener('click', searchUniversal);
+      document.querySelector('[data-action="run-api"]').addEventListener('click', runApiExplorer);
+
+      el('api-preset')?.addEventListener('change', () => {
+        const v = el('api-preset').value;
+        if (v) el('api-path').value = v;
+      });
+      el('api-path')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') runApiExplorer(); });
+
+      el('anime-relations-btn')?.addEventListener('click', async () => {
+        const id = state.selected?.id;
+        if (!id) return;
+        try {
+          await api('/v1/anime/metadata/' + id + '/relations');
+          setStatus(el('search-status'), 'Relations loaded', 'ok');
+        } catch (e) {
+          setStatus(el('search-status'), e.message, 'error');
+        }
+      });
+
+      el('anime-search-source')?.addEventListener('change', () => {
+        const source = el('anime-search-source').value;
+        const isAnikoto = source === 'anikoto';
+        if (el('anime-provider')) el('anime-provider').style.display = isAnikoto ? 'none' : '';
+        if (source === 'anipub' || source === 'animethemes') el('anime-provider').value = source;
+      });
+
+      el('anime-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchAnime(); });
+      el('manga-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchManga(); });
+      el('hentai-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchHentai(); });
+      el('uni-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchUniversal(); });
+
+      el('clear-json').addEventListener('click', () => { el('output').textContent = 'Ready.'; });
+      el('lightbox').addEventListener('click', () => el('lightbox').classList.add('hidden'));
+    }
+
+    bindEvents();
+    loadBooruSites();
+    switchTab('anime');
+  </script>
+</body>
+</html>
