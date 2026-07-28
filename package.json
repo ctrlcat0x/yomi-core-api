@@ -1,7 +1,6 @@
 {
   "name": "yomi-core-api",
   "private": true,
-  "type": "module",
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "bun run --filter @yomi/server dev",
