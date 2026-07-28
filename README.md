@@ -45,4 +45,5 @@ bun run build
 bun run test:e2e
 ```
 
-Deploy with `bunx vercel`; Vercel loads the root Hono `index.ts` export.
+Deploy with `bunx vercel`; Vercel loads the root Hono `index.ts` export on the
+stable Node.js runtime while Bun remains the package manager and build tool.
