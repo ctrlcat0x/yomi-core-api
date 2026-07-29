@@ -347,6 +347,166 @@ describe("MangaFire provider", () => {
   });
 });
 
+describe("MangaK provider", () => {
+  it("normalizes full search, series, chapter, and page flow", async () => {
+    const originalFetch = globalThis.fetch;
+    const capturedUrls: string[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      capturedUrls.push(url);
+      if (url.includes("/titles/search?")) {
+        return Response.json({
+          success: true,
+          data: {
+            items: [
+              {
+                id: "98vndE8d",
+                name: "One Piece",
+                cover: "https://cdn.example.test/cover.webp",
+              },
+            ],
+            pagination: {
+              total: 1,
+              page: 1,
+              limit: 20,
+              has_next: false,
+            },
+          },
+        });
+      }
+      if (url.endsWith("/titles/98vndE8d/chapters")) {
+        return Response.json({
+          success: true,
+          data: {
+            chapters: [
+              {
+                id: "YPVZBkj2",
+                name: "Chapter 1189",
+                slug: "chapter-1189",
+                updated_at: "2026-07-24T18:31:20.000Z",
+              },
+            ],
+          },
+        });
+      }
+      if (url.endsWith("/titles/98vndE8d/chapters/YPVZBkj2/images")) {
+        return Response.json({
+          success: true,
+          data: { images: ["https://cdn.example.test/page-1.webp"] },
+        });
+      }
+      if (url.endsWith("/titles/98vndE8d")) {
+        return Response.json({
+          success: true,
+          data: {
+            title: {
+              id: "98vndE8d",
+              url: "/one-piece",
+              name: "One Piece",
+              summary: "Pirate adventure",
+              cover: "https://cdn.example.test/cover.webp",
+              status: "Ongoing",
+              type: { name: "manga" },
+              release_date: "1997",
+              authors: [{ name: "Oda Eiichiro" }],
+              genres: [{ name: "Action" }],
+              stats: { chapters_count: 1304, views: 100, bookmarks_count: 10 },
+            },
+          },
+        });
+      }
+      return new Response("{}", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    try {
+      const { mangakProvider } = await import("@yomi/manga-core");
+      const search = await mangakProvider.search("one piece");
+      expect(search.results[0]).toMatchObject({
+        id: "98vndE8d",
+        title: "One Piece",
+        provider: "mangak",
+      });
+
+      const series = await mangakProvider.getSeries("98vndE8d", true);
+      expect(series).toMatchObject({
+        id: "98vndE8d",
+        title: "One Piece",
+        author: "Oda Eiichiro",
+        chaptersCount: 1304,
+      });
+      expect(series.chapters[0]).toMatchObject({
+        id: "YPVZBkj2",
+        slug: "YPVZBkj2",
+        index: "1189",
+      });
+
+      const pages = await mangakProvider.getPages("98vndE8d", "YPVZBkj2");
+      expect(pages.images).toEqual(["https://cdn.example.test/page-1.webp"]);
+      expect(capturedUrls).toContain(
+        "https://api.mangak.io/titles/98vndE8d/chapters/YPVZBkj2/images",
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe("Atsumaru provider", () => {
+  it("deduplicates scanlation variants and waterfalls page requests", async () => {
+    const originalFetch = globalThis.fetch;
+    const requestedVariants: string[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      const chapterId = url.searchParams.get("chapterId");
+      if (chapterId) {
+        requestedVariants.push(chapterId);
+        return Response.json({
+          readChapter: {
+            id: chapterId,
+            title: "Chapter 1",
+            pages:
+              chapterId === "new"
+                ? []
+                : [{ image: "/static/pages/old/001.avif" }],
+          },
+        });
+      }
+      return new Response("{}", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    try {
+      const { getAtsumaruPages, normalizeAtsumaruChapters } = await import(
+        "../packages/manga-core/src/providers/atsumaru/index.js"
+      );
+      const chapters = normalizeAtsumaruChapters(
+        [
+          { id: "old", title: "Chapter 1", number: 1, createdAt: 1 },
+          { id: "new", title: " Chapter   1 ", number: 1, createdAt: 2 },
+          {
+            id: "side",
+            title: "Chapter 1 Side Story",
+            number: 1,
+            createdAt: 3,
+          },
+        ],
+        "series",
+      );
+      expect(chapters).toHaveLength(2);
+      expect(chapters[0]?.slug).toBe("new~old");
+      expect(chapters[1]?.slug).toBe("side");
+
+      const pages = await getAtsumaruPages("series", "new~old");
+      expect(requestedVariants).toEqual(["new", "old"]);
+      expect(pages.id).toBe("old");
+      expect(pages.images).toEqual([
+        "https://atsu.moe/static/pages/old/001.avif",
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
 describe("Tag parsing edge cases", () => {
   it("handles rating tags", () => {
     const tags = parseTagString("1girl rating:safe -furry");

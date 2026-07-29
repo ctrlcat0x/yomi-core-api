@@ -9,6 +9,12 @@ export interface Chapter {
   createdAt: string;
   index: string;
   url: string;
+  sources?: Array<{
+    provider: MangaSourceId;
+    codename: string;
+    seriesId: string;
+    chapterSlug: string;
+  }>;
 }
 
 export interface ChapterData {
@@ -69,14 +75,14 @@ export interface MangaSearchResult {
   image: string;
   provider: string;
   imageHeaders?: Record<string, string>;
-  sourceIds?: Partial<
-    Record<"mangafire" | "weebcentral" | "omegascans", string>
-  >;
+  codename?: string;
+  sourceIds?: Partial<Record<MangaSourceId, string>>;
   sources?: Array<{
-    provider: "mangafire" | "weebcentral" | "omegascans";
+    provider: MangaSourceId;
     id: string;
     title: string;
     image: string;
+    codename?: string;
   }>;
 }
 
@@ -89,9 +95,18 @@ export interface MangaSearchPage {
     hasNextPage: boolean;
   };
   sources?: Array<{
-    provider: "mangafire" | "weebcentral" | "omegascans";
+    provider: MangaSourceId;
     status: "fulfilled" | "rejected";
     count: number;
     error?: string;
   }>;
 }
+
+export type MangaSourceId =
+  | "mangak"
+  | "omegascans"
+  | "mangafire"
+  | "weebcentral"
+  | "atsumaru"
+  | "mangakatana"
+  | "mangaball";

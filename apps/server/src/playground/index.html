@@ -170,7 +170,7 @@
           <button class="btn" type="button" data-action="search-anime">Search</button>
         </div>
         <div class="toolbar tab-toolbar hidden" data-tab="manga">
-          <select id="manga-provider" aria-label="Provider"><option value="mangafire">mangafire</option><option value="weebcentral">weebcentral</option><option value="omegascans">omegascans</option></select>
+          <select id="manga-provider" aria-label="Provider"><option value="mangak">Jett (mangak)</option><option value="atsumaru">Viper (atsumaru)</option><option value="mangakatana">Reyna (mangakatana)</option><option value="mangaball">Cypher (mangaball)</option><option value="mangafire">Phoenix (mangafire)</option><option value="weebcentral">Sova (weebcentral)</option><option value="omegascans">Sage (omegascans)</option></select>
           <input id="manga-q" placeholder="Search manga..." value="solo leveling" aria-label="Search query" />
           <button class="btn" type="button" data-action="search-manga">Search</button>
         </div>
@@ -189,6 +189,13 @@
             <option value="/health">GET /health</option>
             <option value="/v1/anime/providers">GET /v1/anime/providers</option>
             <option value="/v1/manga/providers">GET /v1/manga/providers</option>
+            <option value="/v1/manga/sources">GET /v1/manga/sources</option>
+            <option value="/v1/manga/aggregate/search?q=Naruto">GET /v1/manga/aggregate/search</option>
+            <option value="/v1/manga/aggregate/series?title=Naruto">GET /v1/manga/aggregate/series</option>
+            <option value="/v1/manga/aggregate/pages?title=Naruto&chapter=1&source=viper">GET /v1/manga/aggregate/pages</option>
+            <option value="/v1/manga/recommendations?genres=Action,Fantasy&titles=Naruto&limit=10">GET /v1/manga/recommendations</option>
+            <option value="/v1/manga/onboarding">GET /v1/manga/onboarding</option>
+            <option value="/v1/manga/home">GET /v1/manga/home</option>
             <option value="/v1/hentai/sites">GET /v1/hentai/sites</option>
             <option value="/v1/search/universal?q=naruto">GET /v1/search/universal</option>
             <option value="/v1/search/anime?q=naruto">GET /v1/search/anime</option>
@@ -312,7 +319,7 @@
     }
 
     function pagesPath(provider, seriesSlug, chapterSlug) {
-      if (provider === 'omegascans' || provider === 'mangafire') {
+      if (provider !== 'weebcentral') {
         const parts = [seriesSlug, chapterSlug].filter(Boolean).map(encodeURIComponent).join('/');
         return '/v1/manga/' + provider + '/pages/' + parts;
       }

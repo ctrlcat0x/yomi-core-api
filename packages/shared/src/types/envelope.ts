@@ -31,6 +31,10 @@ export const providerParamSchema = z.enum([
   "omegascans",
   "mangafire",
   "weebcentral",
+  "mangak",
+  "atsumaru",
+  "mangakatana",
+  "mangaball",
 ]);
 
 export const coreTypeSchema = z.enum(["anime", "manga", "hentai"]);

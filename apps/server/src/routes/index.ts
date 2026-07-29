@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import {
@@ -30,15 +30,21 @@ import {
   parseTagString,
 } from "../../../../packages/hentai-core/src";
 import {
+  MANGA_SOURCE_CODENAMES,
   type MangaProviderId,
+  aggregateMangaPages,
+  aggregateMangaSeries,
   jikanMangaInfo,
   jikanMangaSearch,
   kitsuMangaInfo,
   kitsuMangaSearch,
+  mangaHome,
   mangaPages,
   mangaSearch,
   mangaSeries,
+  recommendManga,
   resolveMangaChapter,
+  resolveMangaProviderId,
 } from "../../../../packages/manga-core/src";
 import {
   ProviderError,
@@ -54,7 +60,15 @@ import {
 } from "../../../../packages/shared/src";
 
 const ANIME_PROVIDERS = ["anikoto", "anipub", "animethemes", "miruro"] as const;
-const MANGA_PROVIDERS = ["omegascans", "mangafire", "weebcentral"] as const;
+const MANGA_PROVIDERS = [
+  "mangak",
+  "omegascans",
+  "mangafire",
+  "weebcentral",
+  "atsumaru",
+  "mangakatana",
+  "mangaball",
+] as const;
 
 function integerQuery(
   value: string | undefined,
@@ -83,9 +97,19 @@ function parseMangaProvider(
   value: string | undefined,
 ): MangaProviderId | undefined {
   if (!value) return undefined;
-  if (MANGA_PROVIDERS.includes(value as MangaProviderId))
-    return value as MangaProviderId;
-  throw new ProviderError(`provider must be ${MANGA_PROVIDERS.join("|")}`, 422);
+  const provider = resolveMangaProviderId(value);
+  if (provider) return provider;
+  throw new ProviderError(
+    `provider must be ${MANGA_PROVIDERS.join("|")} or its codename`,
+    422,
+  );
+}
+
+function listQuery(value: string | undefined): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function isIsoDate(value: string): boolean {
@@ -144,25 +168,52 @@ app.get("/v1/providers", (c) =>
       ],
       manga: [
         {
+          id: "mangak",
+          codename: MANGA_SOURCE_CODENAMES.mangak,
+          kind: "upstream-api",
+          status: "operational",
+          capabilities: ["search", "series", "chapters", "pages"],
+        },
+        {
           id: "weebcentral",
+          codename: MANGA_SOURCE_CODENAMES.weebcentral,
           kind: "scraper",
           status: "operational",
           capabilities: ["search", "series", "chapters", "pages"],
         },
         {
           id: "omegascans",
+          codename: MANGA_SOURCE_CODENAMES.omegascans,
           kind: "upstream-api",
           status: "operational",
           capabilities: ["search", "series", "chapters", "pages"],
         },
         {
           id: "mangafire",
+          codename: MANGA_SOURCE_CODENAMES.mangafire,
           kind: "signed-api",
           status: "operational",
           capabilities: ["search", "series", "chapters", "pages"],
         },
+        ...[
+          ["atsumaru", "public-api"],
+          ["mangakatana", "scraper"],
+          ["mangaball", "csrf-api"],
+        ].map(([id, kind]) => ({
+          id,
+          codename: MANGA_SOURCE_CODENAMES[id as MangaProviderId],
+          kind,
+          status: "operational",
+          capabilities: ["search", "series", "chapters", "pages"],
+        })),
       ],
       hentai: [
+        {
+          id: "nhentai",
+          codename: "killjoy",
+          kind: "doujinshi-api",
+          capabilities: ["search", "gallery"],
+        },
         {
           id: "booru",
           kind: "multi-site",
@@ -189,6 +240,23 @@ app.get("/openapi.json", (c) =>
       "/v1/search/themes": { get: { summary: "Official OP/ED media search" } },
       "/v1/anime/watch": { get: { summary: "Anime episode waterfall" } },
       "/v1/manga/read": { get: { summary: "Manga chapter waterfall" } },
+      "/v1/manga/sources": { get: { summary: "Manga source aliases" } },
+      "/v1/manga/aggregate/search": {
+        get: { summary: "Canonical multi-source manga search" },
+      },
+      "/v1/manga/aggregate/series": {
+        get: { summary: "Merged multi-source series and chapters" },
+      },
+      "/v1/manga/aggregate/pages": {
+        get: { summary: "Waterfall manga chapter pages" },
+      },
+      "/v1/manga/recommendations": {
+        get: { summary: "Preference and history recommendations" },
+      },
+      "/v1/manga/onboarding": {
+        get: { summary: "Onboarding genres and initial recommendations" },
+      },
+      "/v1/manga/home": { get: { summary: "Manga home collections" } },
       "/v1/anime/search": { get: { summary: "Anime search" } },
       "/v1/anime/schedule": { get: { summary: "AniList airing schedule" } },
       "/v1/anime/{provider}/info/{id}": {
@@ -224,7 +292,7 @@ app.get("/openapi.json", (c) =>
 
 app.get("/playground", (c) => {
   const html = readFileSync(
-    join(process.cwd(), "apps", "server", "src", "playground", "index.html"),
+    fileURLToPath(new URL("../playground/index.html", import.meta.url)),
     "utf-8",
   );
   return c.html(html);
@@ -896,13 +964,132 @@ app.get("/v1/anime/:provider/watch/:anilistId/:category/:slug", async (c) => {
 // Manga routes
 app.get("/v1/manga/providers", (c) => c.json(ok([...MANGA_PROVIDERS])));
 
+app.get("/v1/manga/sources", (c) =>
+  c.json(
+    ok([
+      ...MANGA_PROVIDERS.map((id) => ({
+        id,
+        codename: MANGA_SOURCE_CODENAMES[id],
+        capabilities: ["search", "series", "chapters", "pages"],
+      })),
+      {
+        id: "nhentai",
+        codename: "killjoy",
+        capabilities: ["search", "gallery"],
+        content: "adult",
+      },
+    ]),
+  ),
+);
+
 app.get("/v1/manga/read", async (c) => {
   const title = c.req.query("title") ?? c.req.query("q");
   const chapter = c.req.query("chapter");
   if (!title || !chapter)
     return c.json(fail("title and chapter are required"), 422);
   try {
-    return c.json(ok(await resolveMangaChapter(title, chapter)));
+    const source = parseMangaProvider(c.req.query("source"));
+    return c.json(ok(await resolveMangaChapter(title, chapter, source)));
+  } catch (error) {
+    const { status, message } = handleError(error);
+    return c.json(fail(message), status as 500);
+  }
+});
+
+app.get("/v1/manga/aggregate/search", async (c) => {
+  const q = c.req.query("q");
+  if (!q) return c.json(fail("q is required"), 422);
+  try {
+    const page = integerQuery(c.req.query("page"), "page", 1, 1, 1000);
+    const source = parseMangaProvider(c.req.query("source"));
+    const data = await mangaSearch(q, page, source);
+    return c.json(
+      ok(data.results, { ...data.pagination, sources: data.sources }),
+    );
+  } catch (error) {
+    const { status, message } = handleError(error);
+    return c.json(fail(message), status as 500);
+  }
+});
+
+app.get("/v1/manga/aggregate/series", async (c) => {
+  const title = c.req.query("title") ?? c.req.query("q");
+  if (!title) return c.json(fail("title is required"), 422);
+  try {
+    const source = parseMangaProvider(c.req.query("source"));
+    return c.json(ok(await aggregateMangaSeries(title, source)));
+  } catch (error) {
+    const { status, message } = handleError(error);
+    return c.json(fail(message), status as 500);
+  }
+});
+
+app.get("/v1/manga/aggregate/pages", async (c) => {
+  const title = c.req.query("title") ?? c.req.query("q");
+  const chapter = c.req.query("chapter");
+  if (!title || !chapter)
+    return c.json(fail("title and chapter are required"), 422);
+  try {
+    const source = parseMangaProvider(c.req.query("source"));
+    return c.json(ok(await aggregateMangaPages(title, chapter, source)));
+  } catch (error) {
+    const { status, message } = handleError(error);
+    return c.json(fail(message), status as 500);
+  }
+});
+
+app.get("/v1/manga/recommendations", async (c) => {
+  try {
+    const limit = integerQuery(c.req.query("limit"), "limit", 20, 1, 50);
+    const data = await recommendManga({
+      titles: listQuery(c.req.query("titles")),
+      genres: listQuery(c.req.query("genres")),
+      history: listQuery(c.req.query("history")),
+      limit,
+    });
+    return c.json(ok(data, { total: data.length }));
+  } catch (error) {
+    const { status, message } = handleError(error);
+    return c.json(fail(message), status as 500);
+  }
+});
+
+app.get("/v1/manga/onboarding", async (c) => {
+  const genres = listQuery(c.req.query("genres"));
+  const titles = listQuery(c.req.query("titles"));
+  if (!genres.length && !titles.length) {
+    return c.json(
+      ok({
+        genres: [
+          "Action",
+          "Adventure",
+          "Comedy",
+          "Drama",
+          "Fantasy",
+          "Horror",
+          "Mystery",
+          "Romance",
+          "Sci-Fi",
+          "Slice of Life",
+          "Sports",
+          "Supernatural",
+        ],
+        fields: ["genres", "titles"],
+      }),
+    );
+  }
+  try {
+    const recommendations = await recommendManga({ genres, titles, limit: 20 });
+    return c.json(ok({ preferences: { genres, titles }, recommendations }));
+  } catch (error) {
+    const { status, message } = handleError(error);
+    return c.json(fail(message), status as 500);
+  }
+});
+
+app.get("/v1/manga/home", async (c) => {
+  try {
+    return c.json(ok(await mangaHome()));
   } catch (error) {
     const { status, message } = handleError(error);
     return c.json(fail(message), status as 500);

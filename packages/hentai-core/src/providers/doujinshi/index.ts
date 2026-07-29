@@ -57,8 +57,10 @@ export async function doujinshiSearch(query: string, page = 1) {
           favorites: gallery.num_favorites,
           tagIds: gallery.tag_ids,
           provider: "nhentai",
+          codename: "killjoy",
         })),
       source: "nhentai",
+      codename: "killjoy",
     };
   });
 }

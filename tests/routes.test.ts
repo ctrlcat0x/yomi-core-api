@@ -14,7 +14,60 @@ describe("API routes", () => {
     const res = await app.request("/v1/manga/providers");
     const json = await res.json();
     expect(json.success).toBe(true);
-    expect(json.data).toEqual(["omegascans", "mangafire", "weebcentral"]);
+    expect(json.data).toEqual([
+      "mangak",
+      "omegascans",
+      "mangafire",
+      "weebcentral",
+      "atsumaru",
+      "mangakatana",
+      "mangaball",
+    ]);
+  });
+
+  it("exposes Valorant source aliases", async () => {
+    const { app } = await import("../apps/server/src/routes/index.js");
+    const res = await app.request("/v1/manga/sources");
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.data).toContainEqual(
+      expect.objectContaining({ id: "mangak", codename: "jett" }),
+    );
+    expect(json.data).toContainEqual(
+      expect.objectContaining({ id: "nhentai", codename: "killjoy" }),
+    );
+  });
+
+  it("accepts codenames and exposes onboarding fields", async () => {
+    const { app } = await import("../apps/server/src/routes/index.js");
+    const onboarding = await app.request("/v1/manga/onboarding");
+    const onboardingJson = await onboarding.json();
+    expect(onboardingJson.data.genres).toContain("Action");
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      Response.json({
+        success: true,
+        data: { items: [], pagination: {} },
+      })) as unknown as typeof fetch;
+    try {
+      const search = await app.request(
+        "/v1/manga/search?q=naruto&provider=jett",
+      );
+      expect(search.status).toBe(200);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("validates aggregate and recommendation inputs", async () => {
+    const { app } = await import("../apps/server/src/routes/index.js");
+    expect((await app.request("/v1/manga/aggregate/search")).status).toBe(422);
+    expect((await app.request("/v1/manga/aggregate/series")).status).toBe(422);
+    expect(
+      (await app.request("/v1/manga/aggregate/pages?title=Naruto")).status,
+    ).toBe(422);
+    expect((await app.request("/v1/manga/recommendations")).status).toBe(422);
   });
 
   it("accepts slash-containing manga series ids", async () => {
